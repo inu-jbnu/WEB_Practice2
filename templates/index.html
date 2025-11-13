@@ -1,11 +1,117 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flask Template</title>
+  <meta charset="UTF-8" />
+  <title>Todo List (Flask)</title>
+  <style>
+    body { 
+        font-family: Arial; 
+        margin: 40px; 
+    }
+    input, button { 
+        margin: 5px; 
+        padding: 5px; 
+    }
+    .done { 
+        text-decoration: line-through; 
+        color: gray; 
+    }
+    li { 
+        margin: 5px 0; 
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    li span {
+        flex-grow: 1;
+    }
+  </style>
 </head>
 <body>
-    <h1>Hello, {{ name }}!</h1>
+  <h1>Flask Todo List</h1>
+
+  <input id="todoInput" placeholder="할 일 입력" />
+  <button onclick="addTodo()">추가</button>
+  <button onclick="completeAll()">모두 완료</button>
+  <button onclick="deleteAll()">전체 삭제</button>
+
+  <ul id="todoList"></ul>
+
+  <script>
+    async function loadTodos() {
+      const res = await fetch('/todos');
+      const data = await res.json();
+      const list = document.getElementById('todoList');
+      list.innerHTML = '';
+
+      data.data.forEach(todo => {
+        const li = document.createElement('li');
+
+        // 체크박스
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = todo.done;
+        checkbox.onclick = async (e) => {
+          e.stopPropagation();
+          await toggleDone(todo.id, checkbox.checked);
+        };
+        li.appendChild(checkbox);
+
+        // 할 일 텍스트
+        const span = document.createElement('span');
+        span.textContent = todo.title;
+        if (todo.done) span.classList.add('done');
+        li.appendChild(span);
+
+        // 삭제 버튼
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '삭제';
+        delBtn.onclick = async () => {
+          await deleteTodo(todo.id);
+        };
+        li.appendChild(delBtn);
+
+        list.appendChild(li);
+      });
+    }
+
+    async function addTodo() {
+      const title = document.getElementById('todoInput').value;
+      if (!title) return alert('내용을 입력하세요!');
+      await fetch('/todos', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title })
+      });
+      document.getElementById('todoInput').value = '';
+      loadTodos();
+    }
+
+    async function toggleDone(id, done) {
+      await fetch(`/todos/${id}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ done })
+      });
+      loadTodos();
+    }
+
+    async function deleteTodo(id) {
+      await fetch(`/todos/${id}`, { method: 'DELETE' });
+      loadTodos();
+    }
+
+    async function completeAll() {
+      await fetch('/todos/complete_all', { method: 'PUT' });
+      loadTodos();
+    }
+
+    async function deleteAll() {
+      await fetch('/todos', { method: 'DELETE' });
+      loadTodos();
+    }
+
+    loadTodos();
+  </script>
 </body>
 </html>
